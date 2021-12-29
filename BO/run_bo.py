@@ -38,11 +38,11 @@ def load_object(filename):
 # load model and data
 temp = 'w2v'
 
-latent_file = 'data/' + temp + '/latent_features.txt'
-targets_file = 'data/' + temp + '/targets.txt'
-qed_file = 'data/' + temp + '/qed_values.txt'
-sas_file = 'data/' + temp + '/sas_values.txt'
-cycle_file = 'data/' + temp + '/cycle_values.txt'
+latent_file = '/data/tp/VecVAE/data/' + temp + '/latent_features.txt'
+targets_file = temp + '/targets.txt'
+qed_file = temp + '/qed_values.txt'
+sas_file = temp + '/sas_values.txt'
+cycle_file = temp + '/cycle_values.txt'
 X = np.loadtxt(latent_file)
 y = -np.loadtxt(targets_file)
 y = y.reshape((-1, 1))
@@ -51,19 +51,19 @@ if temp == 'CVAE':
     from molecules.predicted_vae_model import VAE_prop
     #h5f = h5py.File('/data/tp/VecVAE/data/CVAE/per_all_250000.h5', 'r')
     modelname = '/data/tp/VecVAE/model/CVAE/predictor_vae_model_250000_0(5qed-sas)(std=1).h5'
-    charset = open('data/CVAE/charset.pkl', 'rb')
+    charset = open('CVAE/charset.pkl', 'rb')
     charset = pickle.load(charset)
 if temp == 'w2v':
     from molecules.predicted_vae_model_w2v import VAE_prop
     #h5f = h5py.File('/data/tp/VecVAE/data/w2v/per_all_w2v_35_w2_n1_250000.h5', 'r')
     modelname = '/data/tp/VecVAE/model/w2v/predictor_vae_model_w2v_35_w2_n1_250000_0(5qed-sas)(std=1).h5'
-    word_vector_file = 'data/w2v/w2v_vector_35_w2_n1.pkl'
+    word_vector_file = 'w2v/w2v_vector_35_w2_n1.pkl'
     distance = 'euclidean'
 if temp == 'glove':
     from molecules.predicted_vae_model_glove import VAE_prop
     #h5f = h5py.File('/data/tp/VecVAE/data/glove/per_all_glove_35_new_w2_250000.h5', 'r')
     modelname = '/data/tp/VecVAE/model/glove/predictor_vae_model_glove_35_new_w2_250000_0(5qed-sas)(std=1).h5'
-    word_vector_file = 'data/glove/glove_vector_35_new_w2.pkl'
+    word_vector_file = 'glove/glove_vector_35_new_w2.pkl'
     distance = 'manhattan'
 model = VAE_prop()
 if os.path.isfile(modelname):
@@ -123,13 +123,13 @@ cycle_scores = np.loadtxt(cycle_file)
 # cycle_scores_normalized = (np.array(cycle_scores) - np.mean(cycle_scores)) / np.std(cycle_scores)
 
 iteration = 0
-while iteration < 5:
+while iteration < 10:
     # We fit the GP
     np.random.seed(iteration * RANDOM_SEED)
     M = 500
     sgp = SparseGP(X_train, 0 * X_train, y_train, M)
     sgp.train_via_ADAM(X_train, 0 * X_train, y_train, X_test, X_test * 0, y_test, minibatch_size=M,
-                       max_iterations=50, learning_rate=0.001)
+                       max_iterations=100, learning_rate=0.001)
 
     pred, uncert = sgp.predict(X_test, 0 * X_test)
     error = np.sqrt(np.mean((pred - y_test) ** 2))
@@ -165,7 +165,7 @@ while iteration < 5:
     #valid_smiles = valid_smiles[:50]
     #new_features = next_inputs[:50]
     #new_features = np.vstack(new_features)
-    save_object(valid_smiles, 'data/' + temp + "/valid_smiles{}.dat".format(iteration))
+    save_object(valid_smiles, temp + "/valid_smiles{}.dat".format(iteration))
 
     scores = []
     for i in range(len(valid_smiles)):
@@ -193,10 +193,10 @@ while iteration < 5:
     print(valid_smiles)
     print(scores)
 
-    save_object(scores, 'data/' + temp + "/scores{}.dat".format(iteration))
+    save_object(scores, temp + "/scores{}.dat".format(iteration))
 
     if len(new_features) > 0:
         X_train = np.concatenate([X_train, new_features], 0)
-        y_train = np.concatenate([y_train, np.array(scores)], 0)
+        y_train = np.concatenate([y_train, np.array(scores)[:, None]], 0)
 
     iteration += 1
