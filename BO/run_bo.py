@@ -64,7 +64,7 @@ if temp == 'glove':
     #h5f = h5py.File('/data/tp/VecVAE/data/glove/per_all_glove_35_new_w2_250000.h5', 'r')
     modelname = '/data/tp/VecVAE/model/glove/predictor_vae_model_glove_35_new_w2_250000_0(5qed-sas)(std=1).h5'
     word_vector_file = 'glove/glove_vector_35_new_w2.pkl'
-    distance = 'manhattan'
+    distance = 'cityblock'
 model = VAE_prop()
 if os.path.isfile(modelname):
     model.load(35, 120, modelname, latent_rep_size=196)
@@ -129,7 +129,7 @@ while iteration < 10:
     M = 500
     sgp = SparseGP(X_train, 0 * X_train, y_train, M)
     sgp.train_via_ADAM(X_train, 0 * X_train, y_train, X_test, X_test * 0, y_test, minibatch_size=M,
-                       max_iterations=100, learning_rate=0.001)
+                       max_iterations=50, learning_rate=0.001)
 
     pred, uncert = sgp.predict(X_test, 0 * X_test)
     error = np.sqrt(np.mean((pred - y_test) ** 2))
@@ -144,10 +144,10 @@ while iteration < 10:
     print('Train ll: ', trainll)
 
     # We pick the next 60 inputs
-    next_inputs = sgp.batched_greedy_ei(100, np.min(X_train, 0), np.max(X_train, 0))
+    next_inputs = sgp.batched_greedy_ei(50, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
-    for i in range(100):
+    for i in range(50):
         all_vec = next_inputs[i]
         print(all_vec)
         if temp == 'CVAE':
@@ -160,6 +160,9 @@ while iteration < 10:
         if m is not None:
             valid_smiles.append(s)
             new_features.append(all_vec)
+        else:
+            valid_smiles.append(None)
+            new_features.append(all_vec)
 
     print(len(valid_smiles), "molecules are found")
     #valid_smiles = valid_smiles[:50]
@@ -169,25 +172,28 @@ while iteration < 10:
 
     scores = []
     for i in range(len(valid_smiles)):
-        current_qed = rdkit.Chem.QED.default(MolFromSmiles(valid_smiles[i]))
-        current_sas = sascorer.calculateScore(MolFromSmiles(valid_smiles[i]))
-        cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(MolFromSmiles(valid_smiles[i]))))
-        if len(cycle_list) == 0:
-            cycle_length = 0
-        else:
-            cycle_length = max([ len(j) for j in cycle_list ])
-        if cycle_length <= 6:
-            cycle_length = 0
-        else:
-            cycle_length = cycle_length - 6
-        current_cycle = -cycle_length
+        if valid_smiles[i] is not None:
+            current_qed = rdkit.Chem.QED.default(MolFromSmiles(valid_smiles[i]))
+            current_sas = sascorer.calculateScore(MolFromSmiles(valid_smiles[i]))
+            cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(MolFromSmiles(valid_smiles[i]))))
+            if len(cycle_list) == 0:
+                cycle_length = 0
+            else:
+                cycle_length = max([ len(j) for j in cycle_list ])
+            if cycle_length <= 6:
+                cycle_length = 0
+            else:
+                cycle_length = cycle_length - 6
+            current_cycle = -cycle_length
 
-        print(current_qed, current_sas)
+            print(current_qed, current_sas)
 
-        sas_normalized = (current_sas - np.mean(sas)) / np.std(sas)
-        qed_normalized = (current_qed - np.mean(qed)) / np.std(qed)
-        cycle_normalized = (current_cycle - np.mean(cycle_scores)) / np.std(cycle_scores)
-        score = 5*qed_normalized - sas_normalized + cycle_normalized
+            sas_normalized = (current_sas - np.mean(sas)) / np.std(sas)
+            qed_normalized = (current_qed - np.mean(qed)) / np.std(qed)
+            cycle_normalized = (current_cycle - np.mean(cycle_scores)) / np.std(cycle_scores)
+            score = 5*qed_normalized - sas_normalized + cycle_normalized
+        else:
+            score = -max(y)[0]
         scores.append(-score)  # target is always minused
 
     print(valid_smiles)
