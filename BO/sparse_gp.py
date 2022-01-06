@@ -240,7 +240,7 @@ class SparseGP:
                 current_energy = process_minibatch_adam(minibatch_data_means, minibatch_data_vars, minibatch_targets)
                 elapsed_time = time.time() - start
 
-                print('Epoch: {}, Mini-batch: {} of {} - Energy: {} Time: {}'.format(j, i, n_batches, current_energy, elapsed_time))
+                #print('Epoch: {}, Mini-batch: {} of {} - Energy: {} Time: {}'.format(j, i, n_batches, current_energy, elapsed_time))
                 sys.stdout.flush()
 
             pred, uncert = self.predict(input_means_test, input_vars_test)
@@ -294,6 +294,7 @@ class SparseGP:
         self.setForPrediction()
 
         grid_size = 10000
+        #grid = casting(x + np.random.rand(grid_size, self.d_input) * (upper - lower))
         grid = casting(lower + np.random.rand(grid_size, self.d_input) * (upper - lower))
 
         incumbent = self.get_incumbent(grid, lower, upper)
@@ -318,7 +319,7 @@ class SparseGP:
             randomness_numpy = casting(0 * np.random.randn(X_numpy.shape[ 0 ], n_samples).astype(theano.config.floatX))
             X.set_value(X_numpy)
             randomness.set_value(randomness_numpy)
-            print(i, X_numpy)
+            #print(i, X_numpy)
 
         m, v = self.predict(X_numpy, 0 * X_numpy)
     

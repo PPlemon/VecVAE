@@ -1,6 +1,6 @@
 import numpy as np
 import random
-RANDOM_SEED = 12266311
+RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
 np.random.seed(RANDOM_SEED)
 import pickle
@@ -101,11 +101,13 @@ def decode_smiles_from_indexes(vec, charset):
     return "".join(map(lambda x: charset[x], vec)).strip()
 
 ###########
-
-
 n = X.shape[0]
 # m is the number of sample
 m = 2000
+sort = y.argsort()[::-1]
+#t = sort[:m]
+#X = X[t]
+#y = y[t]
 permutation = np.random.choice(n, m, replace=False)
 
 X_train = X[permutation, :][0: np.int(np.round(0.9 * m)), :]
@@ -121,15 +123,16 @@ cycle_scores = np.loadtxt(cycle_file)
 # SA_scores_normalized = (np.array(SA_scores) - np.mean(SA_scores)) / np.std(SA_scores)
 # logP_values_normalized = (np.array(logP_values) - np.mean(logP_values)) / np.std(logP_values)
 # cycle_scores_normalized = (np.array(cycle_scores) - np.mean(cycle_scores)) / np.std(cycle_scores)
-
+all_valid_smiles = []
+all_scores = []
 iteration = 0
-while iteration < 10:
+while iteration < 200:
     # We fit the GP
     np.random.seed(iteration * RANDOM_SEED)
-    M = 500
+    M = 32
     sgp = SparseGP(X_train, 0 * X_train, y_train, M)
     sgp.train_via_ADAM(X_train, 0 * X_train, y_train, X_test, X_test * 0, y_test, minibatch_size=M,
-                       max_iterations=50, learning_rate=0.001)
+                       max_iterations=20, learning_rate=0.0005)
 
     pred, uncert = sgp.predict(X_test, 0 * X_test)
     error = np.sqrt(np.mean((pred - y_test) ** 2))
@@ -144,12 +147,13 @@ while iteration < 10:
     print('Train ll: ', trainll)
 
     # We pick the next 60 inputs
-    next_inputs = sgp.batched_greedy_ei(50, np.min(X_train, 0), np.max(X_train, 0))
+    #next_inputs = sgp.batched_greedy_ei(20, X[sort[iteration]], np.min(X_train, 0), np.max(X_train, 0))
+    next_inputs = sgp.batched_greedy_ei(20, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
-    for i in range(50):
+    for i in range(20):
         all_vec = next_inputs[i]
-        print(all_vec)
+        #print(all_vec)
         if temp == 'CVAE':
             sampled = model.decoder.predict(all_vec.reshape(1, 196)).argmax(axis=2)[0]
             s = decode_smiles_from_indexes(sampled, charset)
@@ -160,49 +164,55 @@ while iteration < 10:
         if m is not None:
             valid_smiles.append(s)
             new_features.append(all_vec)
-        else:
-            valid_smiles.append(None)
-            new_features.append(all_vec)
+        #else:
+        #    valid_smiles.append(None)
+        #    new_features.append(all_vec)
 
     print(len(valid_smiles), "molecules are found")
     #valid_smiles = valid_smiles[:50]
     #new_features = next_inputs[:50]
     #new_features = np.vstack(new_features)
-    save_object(valid_smiles, temp + "/valid_smiles{}.dat".format(iteration))
-
+    #save_object(valid_smiles, temp + "/result/valid_smiles{}.dat".format(iteration))
+    all_valid_smiles.append(valid_smiles)
     scores = []
     for i in range(len(valid_smiles)):
         if valid_smiles[i] is not None:
-            current_qed = rdkit.Chem.QED.default(MolFromSmiles(valid_smiles[i]))
-            current_sas = sascorer.calculateScore(MolFromSmiles(valid_smiles[i]))
-            cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(MolFromSmiles(valid_smiles[i]))))
-            if len(cycle_list) == 0:
-                cycle_length = 0
-            else:
-                cycle_length = max([ len(j) for j in cycle_list ])
-            if cycle_length <= 6:
-                cycle_length = 0
-            else:
-                cycle_length = cycle_length - 6
-            current_cycle = -cycle_length
+            try:
+                current_qed = rdkit.Chem.QED.default(MolFromSmiles(valid_smiles[i]))
+                current_sas = sascorer.calculateScore(MolFromSmiles(valid_smiles[i]))
+                cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(MolFromSmiles(valid_smiles[i]))))
+                if len(cycle_list) == 0:
+                    cycle_length = 0
+                else:
+                    cycle_length = max([ len(j) for j in cycle_list ])
+                if cycle_length <= 6:
+                    cycle_length = 0
+                else:
+                    cycle_length = cycle_length - 6
+                current_cycle = -cycle_length
 
-            print(current_qed, current_sas)
+                print(current_qed, current_sas)
 
-            sas_normalized = (current_sas - np.mean(sas)) / np.std(sas)
-            qed_normalized = (current_qed - np.mean(qed)) / np.std(qed)
-            cycle_normalized = (current_cycle - np.mean(cycle_scores)) / np.std(cycle_scores)
-            score = 5*qed_normalized - sas_normalized + cycle_normalized
+                sas_normalized = (current_sas - np.mean(sas)) / np.std(sas)
+                qed_normalized = (current_qed - np.mean(qed)) / np.std(qed)
+                cycle_normalized = (current_cycle - np.mean(cycle_scores)) / np.std(cycle_scores)
+                score = 5*qed_normalized - sas_normalized + cycle_normalized
+            except:
+                score = -np.mean(y_train)
         else:
             score = -max(y)[0]
         scores.append(-score)  # target is always minused
-
+    all_scores.append(scores)
     print(valid_smiles)
     print(scores)
 
-    save_object(scores, temp + "/scores{}.dat".format(iteration))
+    #save_object(scores, temp + "/result/scores{}.dat".format(iteration))
 
     if len(new_features) > 0:
         X_train = np.concatenate([X_train, new_features], 0)
         y_train = np.concatenate([y_train, np.array(scores)[:, None]], 0)
 
     iteration += 1
+
+save_object(all_scores, temp + "/result/all_scores_2000_{}.dat".format(iteration))
+save_object(all_valid_smiles, temp + "/result/all_valid_smiles_2000_{}.dat".format(iteration))
