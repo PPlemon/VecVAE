@@ -36,7 +36,7 @@ def load_object(filename):
     return ret
 
 # load model and data
-temp = 'w2v'
+temp = 'CVAE'
 
 latent_file = '/data/tp/VecVAE/data/' + temp + '/latent_features.txt'
 targets_file = temp + '/targets.txt'
@@ -103,7 +103,7 @@ def decode_smiles_from_indexes(vec, charset):
 ###########
 n = X.shape[0]
 # m is the number of sample
-m = 2000
+m = 500
 sort = y.argsort()[::-1]
 #t = sort[:m]
 #X = X[t]
@@ -147,8 +147,8 @@ while iteration < 200:
     print('Train ll: ', trainll)
 
     # We pick the next 60 inputs
-    #next_inputs = sgp.batched_greedy_ei(20, X[sort[iteration]], np.min(X_train, 0), np.max(X_train, 0))
-    next_inputs = sgp.batched_greedy_ei(20, np.min(X_train, 0), np.max(X_train, 0))
+    next_inputs = sgp.batched_greedy_ei(20, X[sort[iteration]], np.min(X_train, 0), np.max(X_train, 0))
+    #next_inputs = sgp.batched_greedy_ei(20, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
     for i in range(20):
@@ -214,5 +214,5 @@ while iteration < 200:
 
     iteration += 1
 
-save_object(all_scores, temp + "/result/all_scores_2000_{}.dat".format(iteration))
-save_object(all_valid_smiles, temp + "/result/all_valid_smiles_2000_{}.dat".format(iteration))
+save_object(all_scores, temp + "/result/all_scores{}.dat".format(iteration))
+save_object(all_valid_smiles, temp + "/result/all_valid_smiles{}.dat".format(iteration))

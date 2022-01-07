@@ -289,13 +289,13 @@ class SparseGP:
 
         return global_optimization(grid, lower, upper, function_grid, function_scalar, function_scalar_gradient)[ 0 ]
 
-    def batched_greedy_ei(self, q, lower, upper, n_samples = 1):
+    def batched_greedy_ei(self, q, x, lower, upper, n_samples = 1):
 
         self.setForPrediction()
 
         grid_size = 10000
-        #grid = casting(x + np.random.rand(grid_size, self.d_input) * (upper - lower))
-        grid = casting(lower + np.random.rand(grid_size, self.d_input) * (upper - lower))
+        grid = casting(x + np.random.rand(grid_size, self.d_input) * (upper - lower))
+        #grid = casting(lower + np.random.rand(grid_size, self.d_input) * (upper - lower))
 
         incumbent = self.get_incumbent(grid, lower, upper)
         X_numpy = self.optimize_ei(grid, lower, upper, incumbent)
