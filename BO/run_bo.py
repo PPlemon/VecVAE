@@ -147,8 +147,8 @@ while iteration < 200:
     print('Train ll: ', trainll)
 
     # We pick the next 60 inputs
-    next_inputs = sgp.batched_greedy_ei(20, X[sort[iteration]], np.min(X_train, 0), np.max(X_train, 0))
-    #next_inputs = sgp.batched_greedy_ei(20, np.min(X_train, 0), np.max(X_train, 0))
+    #next_inputs = sgp.batched_greedy_ei(20, X[sort[iteration]], np.min(X_train, 0), np.max(X_train, 0))
+    next_inputs = sgp.batched_greedy_ei(20, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
     for i in range(20):
@@ -199,8 +199,8 @@ while iteration < 200:
                 score = 5*qed_normalized - sas_normalized + cycle_normalized
             except:
                 score = -np.mean(y_train)
-        else:
-            score = -max(y)[0]
+        #else:
+        #    score = -max(y)[0]
         scores.append(-score)  # target is always minused
     all_scores.append(scores)
     print(valid_smiles)
@@ -214,5 +214,5 @@ while iteration < 200:
 
     iteration += 1
 
-save_object(all_scores, temp + "/result/all_scores{}.dat".format(iteration))
-save_object(all_valid_smiles, temp + "/result/all_valid_smiles{}.dat".format(iteration))
+save_object(all_scores, temp + "/result/all_scores_500_200{}.dat".format(iteration))
+save_object(all_valid_smiles, temp + "/result/all_valid_smiles_500_200{}.dat".format(iteration))
