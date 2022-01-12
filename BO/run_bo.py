@@ -36,7 +36,7 @@ def load_object(filename):
     return ret
 
 # load model and data
-temp = 'CVAE'
+temp = 'w2v'
 
 latent_file = '/data/tp/VecVAE/data/' + temp + '/latent_features.txt'
 targets_file = temp + '/targets.txt'
